@@ -11,14 +11,38 @@ interface useRecorderReturn {
   startRecording: () => void;
   /** 録音を停止する。 */
   stopRecording: () => void;
+  /** バッファ */
+  buffer?: AudioBuffer;
 }
 
-const useRecorder = (): useRecorderReturn => {
+/**
+ * 録音機能を提供する。
+ */
+const useRecorder = (isAutoPlay: boolean): useRecorderReturn => {
   const [chunks, setChunks] = useState<Blob[]>([]);
   const [recorder, setRecorder] = useState<MediaRecorder>();
   const [buffer, setBuffer] = useState<AudioBuffer>();
   const audioCtx = useMemo(() => new AudioContext(), []);
   const [bufferSource, setBufferSource] = useState<AudioBufferSourceNode>();
+
+  /**
+   * 録音データを再生する。
+   * @param buf 再生するバッファ(bufferより新しいバッファを参照する場合に指定)
+   */
+  const play = useCallback(
+    (buf?: AudioBuffer) => {
+      if (buf === undefined && buffer === undefined) return;
+
+      bufferSource?.stop(); // 前の再生を停止
+
+      const newSource = audioCtx.createBufferSource();
+      newSource.buffer = buf || (buffer as AudioBuffer); // bufかbufferは必ず存在する
+      newSource.connect(audioCtx.destination);
+      newSource.start();
+      setBufferSource(newSource);
+    },
+    [audioCtx, buffer, bufferSource]
+  );
 
   useEffect(() => {
     (async () => {
@@ -35,54 +59,41 @@ const useRecorder = (): useRecorderReturn => {
         (e: BlobEvent) => e.data.size && chunks.push(e.data)
       );
 
-      // 録音終了時に録音データをdecodeして設定する。
-      mediaRecorder.addEventListener("stop", () => {
+      // 録音終了時に録音データをdecodeして設定する(chunkをblobに追加後)
+      mediaRecorder.addEventListener("stop", async () => {
         const blob = new Blob(chunks);
-        const reader = new FileReader();
-        reader.readAsArrayBuffer(blob);
-        reader.onload = async () => {
-          if (!(reader.result instanceof ArrayBuffer)) {
-            throw new Error(`${typeof reader.result} is unexpected type.`);
-          }
-
-          const buf = await audioCtx.decodeAudioData(reader.result);
-          setBuffer(buf);
-        };
+        const data = await blob.arrayBuffer();
+        const buf = await audioCtx.decodeAudioData(data);
+        setBuffer(buf);
+        isAutoPlay && play(buf);
       });
 
       setChunks(chunks);
       setRecorder(mediaRecorder);
     })();
-  }, [audioCtx, chunks]);
-
-  const play = useCallback(() => {
-    if (!buffer) return;
-    bufferSource?.stop(); // 前の再生を停止
-
-    const newSource = audioCtx.createBufferSource();
-    newSource.buffer = buffer;
-    newSource.connect(audioCtx.destination);
-    newSource.start();
-    setBufferSource(newSource);
-  }, [audioCtx, buffer, bufferSource]);
+  }, [audioCtx, chunks, isAutoPlay, play]);
 
   const stop = useCallback(() => {
     bufferSource?.stop();
   }, [bufferSource]);
 
   const clear = useCallback(() => {
-    setChunks([]);
-  }, []);
+    chunks.length = 0;
+  }, [chunks]);
 
-  const startRecording = useCallback(() => {
-    recorder?.start();
-  }, [recorder]);
+  const startRecording = useCallback(
+    (removeOldData: boolean = true) => {
+      if (removeOldData) clear();
+      recorder?.start();
+    },
+    [recorder, clear]
+  );
 
   const stopRecording = useCallback(() => {
     recorder?.stop();
   }, [recorder]);
 
-  return { play, clear, startRecording, stopRecording, stop };
+  return { play, clear, startRecording, stopRecording, stop, buffer };
 };
 
 export default useRecorder;
