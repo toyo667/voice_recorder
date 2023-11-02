@@ -1,3 +1,8 @@
+# About
+
+マイクから音声読み込んで再生するやつ  
+必要最小限
+
 # Getting Started with Create React App
 
 This project was bootstrapped with [Create React App](https://github.com/facebook/create-react-app).
