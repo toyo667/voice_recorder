@@ -8,7 +8,7 @@ interface useRecorderReturn {
   /** 録音データを初期化する。 */
   clear: () => void;
   /** 録音を開始する。 */
-  startRecording: () => void;
+  startRecording: (removeOldData: boolean) => void;
   /** 録音を停止する。 */
   stopRecording: () => void;
   /** バッファ */
