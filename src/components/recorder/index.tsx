@@ -33,7 +33,9 @@ export const Recorder = () => {
   return (
     <Container>
       <Box sx={{ mt: 10 }}>
-        <Typography variant="h3">音声読み込んで再生するやつ</Typography>
+        <Typography variant="h3">
+          マイクから音声読み込んで再生するやつ
+        </Typography>
         <Typography>英語勉強のスピーキング、リスニング確認用</Typography>
         <Typography>
           AutoPlayにチェックを入れると録音停止時に自動で再生してくれるよ
